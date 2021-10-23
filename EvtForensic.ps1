@@ -556,6 +556,7 @@ $Tab=[char]9
         16  <#Windows failed to resume from hibernate/sleep #> { 
                 Write-Host $Event.TimeCreated $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Yellow 
         }
+
         20 <#windows update failed for some reason #> {
             if ($Event.Level-eq 2)  <# Its' a  failed update #>
                 {
@@ -599,11 +600,9 @@ $Tab=[char]9
 
         
         
-        105 <# Power State Change#> 
-         {
+        105 <# Power State Change#> {
    
                 Write-Host $Event.TimeCreated $Event.Id $Event.Task $Event.Level $Event.message  "Power changed to AC:" $Event.'Eventdata.ACOnline' -Separator $Tab  -ForegroundColor white
-
         }
         
 
@@ -658,11 +657,14 @@ EventID	TaskID	Level	Description
 1	0	4	The System was in hibernation from (x - y)
 12	1	4	The operating system started at system time ?2020?-?08?-?08T07:37:18.500000000Z.
 13	2	4	The operating system is shutting down at system time ?2020?-?08?-?08T07:37:13.326897700Z.
+16  xxx? 
 20	31	4	The last shutdown's success status was true. The last boot's success status was true.
 20	1	2	Installation Failure: Windows failed to install the following update with error
 41	63	1	The system has rebooted without cleanly shutting down first. This error could be caused if the system stopped responding, crashed, or lost power unexpectedly.
 42	64	4	The system is entering sleep.Sleep Reason: Application API
 46	0	2	Crash dump initialization failed!
+47 xxx?
+49 xxx?
 105	100	4	Power source change.
 107	102	4	The system has resumed from sleep.
 109	103	4	The kernel power manager has initiated a shutdown transition.Shutdown Reason: Kernel API
