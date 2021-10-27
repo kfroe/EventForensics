@@ -409,6 +409,7 @@ $BugcheckCodeTable= @{
 ‘0xC0000218’='STATUS_CANNOT_LOAD_REGISTRY_FILE’;
 ‘0xC000021A’='WINLOGON_FATAL_ERROR’;
 ‘0xC0000221’='STATUS_IMAGE_CHECKSUM_MISMATCH’;
+‘0xDEAD0004’='TBD:A_BAD_THING’;
 ‘0xDEADDEAD’='MANUALLY_INITIATED_CRASH1’;
 }
 
@@ -556,6 +557,7 @@ $Tab=[char]9
         16  <#Windows failed to resume from hibernate/sleep #> { 
                 Write-Host $Event.TimeCreated $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Yellow 
         }
+
         20 <#windows update failed for some reason #> {
             if ($Event.Level-eq 2)  <# Its' a  failed update #>
                 {
@@ -569,7 +571,7 @@ $Tab=[char]9
           
                if (-not $Event.EventDataBugcheckCode) <# If we have a bugcheck code of any type, convert from dec to hex and find the friendly name #>
                   { 
-                  $BugHex = '0x'+'{0:x8}' -f [Convert]::ToInt16($Event.'EventData.BugcheckCode',10)
+                  $BugHex = '0x'+'{0:x8}' -f [Convert]::ToInt64($Event.'EventData.BugcheckCode',10)
                   $BugcheckFriendlyName = $BugcheckCodeTable[$BugHex.ToString()]
               
                   Write-host $Tab 'Bugcheck' $BugHex ":" $BugcheckFriendlyName -ForegroundColor Yellow 
@@ -587,6 +589,11 @@ $Tab=[char]9
                  }
 
         }
+
+        42  <# Entering Sleep (Hibernate) #> { 
+                Write-Host $Event.TimeCreated $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Green 
+        }
+
 
         46  <#Crash dump initialization failed! #> { 
 
