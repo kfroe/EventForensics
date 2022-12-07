@@ -711,7 +711,7 @@ if ($g_ResultsPath)
 
     foreach($path in $g_ResultsPath)
     {
-    Get-ChildItem -include SystemEventLogs.evtx -Path  $path -recurse | 
+    Get-ChildItem -include *.evtx -Path  $path | 
 
         ForEach-Object   {
         write-host	“`r`nParsing $($_.fullname)” -ForegroundColor Yellow
