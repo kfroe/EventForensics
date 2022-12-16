@@ -437,21 +437,6 @@ Function Get-WinEventData {
 .OUTPUTS
     System.Diagnostics.Eventing.Reader.EventLogRecord
 
-.EXAMPLE
-    Get-WinEvent -LogName system -max 1 | Get-WinEventData | Select -Property MachineName, TimeCreated, EventData*
-
-    #  Simple example showing the computer an event was generated on, the time, and any custom event data
-
-.EXAMPLE
-    Get-WinEvent -ComputerName DomainController1 -FilterHashtable @{Logname='security';id=4740} -MaxEvents 10 | Get-WinEventData | Select TimeCreated, EventDataTargetUserName, EventDataTargetDomainName
-
-    #  Find lockout events on a domain controller
-    #    ideally you have log forwarding, audit collection services, or a product from a t-shirt company for this...
-
-.NOTES
-    Concept and most code borrowed from Ashley McGlone
-        http://blogs.technet.com/b/ashleymcglone/archive/2013/08/28/powershell-get-winevent-xml-madness-getting-details-from-event-logs.aspx
-
 .FUNCTIONALITY
     Computers
 #>
@@ -502,9 +487,8 @@ Function Get-WinEventData {
                 if ($null -ne $XMLBin[$i] ) 
                        {  Add-Member -InputObject $entry -MemberType NoteProperty -name "EventData.Binary" -Value $XMLBin[$i] -Force  }
                 }
-       }
-
-            $entry
+            }
+        $entry
         }
     }
 }
@@ -536,114 +520,110 @@ $Tab=[char]9
     #>
     $tc = $Event.TimeCreated.ToString('M/dd/yyyy HH:mm:ss.fff') + "`tSYSEVENT`t"
     switch ($Event.Id)
-        {
-
-        
+    {
+      
         <#Of all the events that are collected via the xpath query, certain ones warrant special attention and are broken out here (for color, or additional).
         The rest are dealt with in the 'default' section  #>
 
         1   <# We only see this when using pwrstate.exe .  returned from a low power state. .....Wake Source: Timer - PwrStateTransitionStressTest.exe
             This is becuase events 42 and 107 (enter and exit sleep) get cached in a fashion that they have the same time stamp, and don't give us accurate info.
             The timestamp is in UTC, and it's a weird one to parse.  ex 2020-07-15T12:44:03.7047735Z   the 'Z' on the end is giving me fits.#> 
-            {
+        {
             if ($null -ne $Event.'EventData.WakeSourceText') 
-                {
+            {
                 $SleepDT =  $Event.'EventData.SleepTime'
                 $WakeDT = $Event.'EventData.WakeTime'
                 $Format = 'yyyy-MM-dd HH:mm:ssZ'
-               
-               <# $dt = [datetime]::ParseExact($SleepDT,$Format,$null) #>
-
                 Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.$Event.message  "The System was in hibernation from" $SleepDT "To" $WakeDT  "For" $dt -Separator $Tab  -ForegroundColor Yellow
-                }
+            }
         }
 
-        16  <#Windows failed to resume from hibernate/sleep #> { 
+        16  <#Windows failed to resume from hibernate/sleep #> 
+        { 
                 Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Yellow 
         }
-        20 <#windows update failed for some reason #> {
+
+        20 <#windows update failed for some reason #> 
+        {
             if ($Event.Level-eq 2)  <# Its' a  failed update #>
-                {
-                 Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Red  
-                }
-               else {Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor white}
+            {
+                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Red  
             }
+               else {Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor white}
+        }
 
-        41  <# *something* bad happened #>  {     
-                   Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Red  
-          
-               if (-not $Event.EventDataBugcheckCode) <# If we have a bugcheck code of any type, convert from dec to hex and find the friendly name #>
-                  { 
-                  $BugHex = '0x'+'{0:x8}' -f [Convert]::ToInt64($Event.'EventData.BugcheckCode',10)
-                  $BugcheckFriendlyName = $BugcheckCodeTable[$BugHex.ToString()]
+        41  <# *something* bad happened #>  
+        {     
+        Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor Red  
+            if (-not $Event.EventDataBugcheckCode) <# If we have a bugcheck code of any type, convert from dec to hex and find the friendly name #>
+            { 
+                $BugHex = '0x'+'{0:x8}' -f [Convert]::ToInt64($Event.'EventData.BugcheckCode',10)
+                $BugcheckFriendlyName = $BugcheckCodeTable[$BugHex.ToString()]
               
-                  Write-host $Tab 'Bugcheck' $BugHex ":" $BugcheckFriendlyName -ForegroundColor Yellow 
-                  Write-host $Tab 'Parameter 1: '  $Event.'EventData.BugcheckParameter1' -ForegroundColor Yellow 
-                  Write-host $Tab 'Parameter 2: '  $Event.'EventData.BugcheckParameter2' -ForegroundColor Yellow 
-                  Write-host $Tab 'Parameter 3: '  $Event.'EventData.BugcheckParameter3' -ForegroundColor Yellow 
-                  Write-host $Tab 'Parameter 4: '  $Event.'EventData.BugcheckParameter4' -ForegroundColor Yellow 
+                Write-host $Tab 'Bugcheck' $BugHex ":" $BugcheckFriendlyName -ForegroundColor Yellow 
+                Write-host $Tab 'Parameter 1: '  $Event.'EventData.BugcheckParameter1' -ForegroundColor Yellow 
+                Write-host $Tab 'Parameter 2: '  $Event.'EventData.BugcheckParameter2' -ForegroundColor Yellow 
+                Write-host $Tab 'Parameter 3: '  $Event.'EventData.BugcheckParameter3' -ForegroundColor Yellow 
+                Write-host $Tab 'Parameter 4: '  $Event.'EventData.BugcheckParameter4' -ForegroundColor Yellow 
 
-                  Write-host $Tab 'SleepInProgress: '  $Event.'EventData.SleepInProgress' -ForegroundColor Yellow 
-                  Write-host $Tab 'ConnectedStandbyInProgress: '  $Event.'EventData.ConnectedStandbyInProgress' -ForegroundColor Yellow                  
-                  Write-host $Tab 'LongPowerButtonPressDetected: '  $Event.'EventData.LongPowerButtonPressDetected' -ForegroundColor Yellow 
-                  Write-host $Tab 'BugcheckInfoFromEFI: '  $Event.'EventData.BugcheckInfoFromEFI' -ForegroundColor Yellow 
-                  Write-host 
-
-                 }
-
+                Write-host $Tab 'SleepInProgress: '  $Event.'EventData.SleepInProgress' -ForegroundColor Yellow 
+                Write-host $Tab 'ConnectedStandbyInProgress: '  $Event.'EventData.ConnectedStandbyInProgress' -ForegroundColor Yellow                  
+                Write-host $Tab 'LongPowerButtonPressDetected: '  $Event.'EventData.LongPowerButtonPressDetected' -ForegroundColor Yellow 
+                Write-host $Tab 'BugcheckInfoFromEFI: '  $Event.'EventData.BugcheckInfoFromEFI' -ForegroundColor Yellow 
+                Write-host 
+            }
         }
 
-        46  <#Crash dump initialization failed! #> { 
-
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab  -ForegroundColor Red
-                    Write-host $Tab 'Data: '  $Event.'EventData.Data' -ForegroundColor Yellow 
-                    Write-host $Tab 'Binary: '  $Event.'EventData.Binary' -ForegroundColor Yellow 
-                    Write-host
-             $Event
+        46  <#Crash dump initialization failed! #> 
+        { 
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab  -ForegroundColor Red
+            Write-host $Tab 'Data: '  $Event.'EventData.Data' -ForegroundColor Yellow 
+            Write-host $Tab 'Binary: '  $Event.'EventData.Binary' -ForegroundColor Yellow 
+            Write-host
+            $Event
         }
 
-        
-        
         105 <# Power State Change#> 
-         {
-   
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message  "Power changed to AC:" $Event.'Eventdata.ACOnline' -Separator $Tab  -ForegroundColor white
-
+        {
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message  "Power changed to AC:" $Event.'Eventdata.ACOnline' -Separator $Tab  -ForegroundColor white
         }
-        
 
-        107 <# Windows exiting hibernation (sleep) #> {
+        107 <# Windows exiting hibernation (sleep) #> 
+        {
             Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message $Event.'Eventdata.ProgrammedWakeTimeAC'"To" $Event.'Eventdata.ProgrammedWakeTimeDC' -Separator $Tab -ForegroundColor white 
         }
 
 
-        506 <# Enter Connected Standby #> {  
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message "Lid Open:" $Event.'EventData.LidOpenState' "External Monitor:" $Event.'EventData.ExternalMonitorConnectedState' -Separator $Tab  -ForegroundColor white
+        506 <# Enter Connected Standby #> 
+        {  
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message "Lid Open:" $Event.'EventData.LidOpenState' "External Monitor:" $Event.'EventData.ExternalMonitorConnectedState' -Separator $Tab  -ForegroundColor white
         }
 
-        507 <# Exit Connected Standby #> {  
-            
-                $durationSleepTime= [int]($EVent.'EventData.SleepDurationInUs'/  60000000)  <# convert microseconds to minutes) #>
-
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message  "Minutes Sleeping:"$durationSleepTime -Separator $Tab -ForegroundColor white
-
+        507 <# Exit Connected Standby #> 
+        {  
+            $durationSleepTime= [int]($EVent.'EventData.SleepDurationInUs'/  60000000)  <# convert microseconds to minutes) #>
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message  "Minutes Sleeping:"$durationSleepTime -Separator $Tab -ForegroundColor white
         }
 
-        161 <# Dump file creation failed due to error during dump creation. #> { 
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message-Separator $Tab  -ForegroundColor Yellow
-                $Event
+        161 <# Dump file creation failed due to error during dump creation. #> 
+        { 
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message-Separator $Tab  -ForegroundColor Yellow
+            $Event
         }
 
-        1001 <# resume from bugcheck  This is a surprisingly rare event #> { 
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message-Separator $Tab -ForegroundColor Green 
+        1001 <# resume from bugcheck  This is a surprisingly rare event #> 
+        { 
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message-Separator $Tab -ForegroundColor Green 
         }
 
-        6008 <#previous system shutdown at xxx was unexpected. #> { 
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab  -ForegroundColor Yellow 
+        6008 <#previous system shutdown at xxx was unexpected. #> 
+        { 
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab  -ForegroundColor Yellow 
         }
 
-        default { 
-                Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor white
+        default 
+        { 
+            Write-Host $tc $Event.Id $Event.Task $Event.Level $Event.message -Separator $Tab -ForegroundColor white
         }
     }
   }
